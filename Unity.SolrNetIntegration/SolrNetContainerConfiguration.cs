@@ -79,8 +79,15 @@ namespace Unity.SolrNetIntegration {
         }
 
         private void RegisterCore(SolrCore core, IUnityContainer container) {
-            string connectionId = GetCoreConnectionId(core.Id);
-            container.RegisterType<ISolrConnection, SolrConnection>(connectionId, new InjectionConstructor(core.Url));
+            string connectionId = GetCoreConnectionId(core.Id, core.HttpMethod);
+
+            if (core.HttpMethod.Equals("POST")){
+                container.RegisterType<ISolrConnection, PostSolrConnection>(connectionId, new InjectionConstructor(new SolrConnection(core.Url), core.Url));
+            }
+            else {
+                container.RegisterType<ISolrConnection, SolrConnection>(connectionId, new InjectionConstructor(core.Url));
+            }
+
             if (!container.IsRegistered(typeof (ISolrOperations<>).MakeGenericType(core.DocumentType))) {
                 RegisterAll(core, container, isNamed : false);
             }
@@ -113,7 +120,7 @@ namespace Unity.SolrNetIntegration {
             var ISolrBasicOperations = typeof (ISolrBasicOperations<>).MakeGenericType(core.DocumentType);
             var ISolrQueryExecuter = typeof (ISolrQueryExecuter<>).MakeGenericType(core.DocumentType);
             var registrationId = isNamed ? core.Id : null;
-            string coreConnectionId = GetCoreConnectionId(core.Id);
+            string coreConnectionId = GetCoreConnectionId(core.Id, core.HttpMethod);
 
             var injectionParameters = new InjectionConstructor(
                new ResolvedParameter(typeof(ISolrConnection), coreConnectionId),
@@ -132,7 +139,7 @@ namespace Unity.SolrNetIntegration {
         private static void RegisterSolrQueryExecuter(SolrCore core, IUnityContainer container, bool isNamed = true) {
             var ISolrQueryExecuter = typeof (ISolrQueryExecuter<>).MakeGenericType(core.DocumentType);
             var SolrQueryExecuter = typeof (SolrQueryExecuter<>).MakeGenericType(core.DocumentType);
-            string coreConnectionId = GetCoreConnectionId(core.Id);
+            string coreConnectionId = GetCoreConnectionId(core.Id, core.HttpMethod);
             var registrationId = isNamed ? core.Id : null;
             container.RegisterType(
                 ISolrQueryExecuter, SolrQueryExecuter, registrationId,
@@ -144,8 +151,14 @@ namespace Unity.SolrNetIntegration {
                     new ResolvedParameter(typeof (ISolrMoreLikeThisHandlerQueryResultsParser<>).MakeGenericType(core.DocumentType))));
         }
 
-        private static string GetCoreConnectionId(string coreId) {
-            return coreId + typeof (SolrConnection);
+        private static string GetCoreConnectionId(string coreId, string httpMethod) {
+            var connectionType = typeof(SolrConnection);
+
+            if (httpMethod.Equals("POST")){
+                connectionType = typeof(PostSolrConnection);
+            }
+
+            return coreId + connectionType;
         }
 
         private void AddCoresFromConfig(IEnumerable<SolrServerElement> solrServers, IUnityContainer container) {
@@ -164,8 +177,9 @@ namespace Unity.SolrNetIntegration {
             var id = server.Id ?? Guid.NewGuid().ToString();
             var documentType = GetCoreDocumentType(server);
             var coreUrl = GetCoreUrl(server);
+            var method = GetHttpMethod(server);
             UriValidator.ValidateHTTP(coreUrl);
-            return new SolrCore(id, documentType, coreUrl);
+            return new SolrCore(id, documentType, coreUrl, method);
         }
 
         private static string GetCoreUrl(SolrServerElement server) {
@@ -174,6 +188,16 @@ namespace Unity.SolrNetIntegration {
                 throw new ConfigurationErrorsException("Core url missing in SolrNet core configuration");
             }
             return url;
+        }
+
+        private static string GetHttpMethod(SolrServerElement server)
+        {
+            var method = server.HttpMethod;
+            if (string.IsNullOrEmpty(method))
+            {
+                method = "GET";
+            }
+            return method;
         }
 
         private static Type GetCoreDocumentType(SolrServerElement server) {

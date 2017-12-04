@@ -1,10 +1,13 @@
 ﻿using System.Configuration;
+using System.Net;
 
 namespace Unity.SolrNetIntegration.Config {
   public class SolrServerElement : ConfigurationElement {
     private const string ID = "id";
     private const string URL = "url";
     private const string DOCUMENT_TYPE = "documentType";
+    private const string METHOD = WebRequestMethods.Http.Get;
+            
 
     [ConfigurationProperty(ID, IsKey = true, IsRequired = true)]
     public string Id {
@@ -24,8 +27,14 @@ namespace Unity.SolrNetIntegration.Config {
       set { base[DOCUMENT_TYPE] = value; }
     }
 
+    [ConfigurationProperty(METHOD, IsKey = true, IsRequired = false)]
+    public string HttpMethod {
+        get { return base[METHOD].ToString(); }
+        set { base[METHOD] = value; }
+    }
+
     public override string ToString() {
-      return string.Format("Id: {0} Url: {1} DocType: {2}", Id, Url, DocumentType);
+      return string.Format("Id: {0} Url: {1} DocType: {2} Method: {3}", Id, Url, DocumentType, HttpMethod);
     }
   }
 }

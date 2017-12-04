@@ -13,17 +13,20 @@
 // limitations under the License.
 
 using System;
+using System.Reflection.Emit;
 
 namespace Unity.SolrNetIntegration {
   internal class SolrCore {
-    public SolrCore(string id, Type documentType, string url) {
+    public SolrCore(string id, Type documentType, string url, string method) {
       Id = id;
       DocumentType = documentType;
       Url = url;
+      HttpMethod = method;
     }
 
     public string Id { get; private set; }
     public Type DocumentType { get; private set; }
     public string Url { get; private set; }
+    public string HttpMethod { get; private set; }
   }
 }
